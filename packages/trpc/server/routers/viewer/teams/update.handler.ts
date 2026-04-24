@@ -1,10 +1,12 @@
 import { getOrgFullOrigin } from "@calcom/ee/organizations/lib/orgDomains";
+import { _invalidateTeamEmailFromCache } from "@calcom/emails/lib/resolveTeamEmailFrom";
 import { TeamRepository } from "@calcom/features/ee/teams/repositories/TeamRepository";
 import { PermissionCheckService } from "@calcom/features/pbac/services/permission-check.service";
 import { IS_TEAM_BILLING_ENABLED } from "@calcom/lib/constants";
 import type { IntervalLimit } from "@calcom/lib/intervalLimits/intervalLimitSchema";
 import { validateIntervalLimitOrder } from "@calcom/lib/intervalLimits/validateIntervalLimitOrder";
 import { uploadLogo } from "@calcom/lib/server/avatar";
+import { EmailFromDomainError, validateEmailFromAddress } from "@calcom/lib/validateEmailFromDomain";
 import { prisma } from "@calcom/prisma";
 import type { Prisma } from "@calcom/prisma/client";
 import { MembershipRole, RedirectType, RRTimestampBasis } from "@calcom/prisma/enums";
@@ -73,6 +75,15 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Booking limits must be in ascending order." });
   }
 
+  try {
+    validateEmailFromAddress(input.emailFromAddress);
+  } catch (err) {
+    if (err instanceof EmailFromDomainError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+    }
+    throw err;
+  }
+
   const data: Prisma.TeamUpdateArgs["data"] = {
     name: input.name,
     bio: input.bio,
@@ -87,6 +98,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     includeManagedEventsInLimits: input.includeManagedEventsInLimits ?? undefined,
     rrResetInterval: input.rrResetInterval,
     rrTimestampBasis: input.rrTimestampBasis,
+    emailFromAddress: input.emailFromAddress,
+    emailFromName: input.emailFromName,
   };
 
   if (
@@ -127,6 +140,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     where: { id: input.id },
     data,
   });
+
+  _invalidateTeamEmailFromCache(updatedTeam.id);
 
   if (
     data.rrTimestampBasis &&

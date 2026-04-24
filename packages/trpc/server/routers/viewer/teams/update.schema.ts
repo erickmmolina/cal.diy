@@ -22,6 +22,8 @@ export type TUpdateInputSchema = {
   includeManagedEventsInLimits?: boolean;
   rrResetInterval?: "DAY" | "MONTH";
   rrTimestampBasis?: "CREATED_AT" | "START_TIME";
+  emailFromAddress?: string | null;
+  emailFromName?: string | null;
 };
 
 export const ZUpdateInputSchema: z.Schema<TUpdateInputSchema> = z.object({
@@ -48,4 +50,6 @@ export const ZUpdateInputSchema: z.Schema<TUpdateInputSchema> = z.object({
   includeManagedEventsInLimits: z.boolean().optional(),
   rrResetInterval: z.enum(["DAY", "MONTH"]).optional(),
   rrTimestampBasis: z.enum(["CREATED_AT", "START_TIME"]).optional(),
+  emailFromAddress: z.string().email().max(200).nullish(),
+  emailFromName: z.string().min(1).max(100).nullish(),
 });
