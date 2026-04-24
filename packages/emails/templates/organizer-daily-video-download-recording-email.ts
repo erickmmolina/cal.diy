@@ -19,6 +19,7 @@ export default class OrganizerDailyVideoDownloadRecordingEmail extends BaseEmail
     this.calEvent = calEvent;
     this.downloadLink = downloadLink;
     this.t = this.calEvent.organizer.language.translate;
+    this.teamId = calEvent.team?.id ?? null;
   }
   protected async getNodeMailerPayload(): Promise<Record<string, unknown>> {
     return {

@@ -97,3 +97,46 @@ describe("BaseEmail with teamId override", () => {
     errSpy.mockRestore();
   });
 });
+
+describe("Booking templates propagate teamId", () => {
+  it("OrganizerScheduledEmail sets teamId from calEvent.team.id", async () => {
+    // Lazy require to avoid the mocks at the top of this file from messing
+    // with OrganizerScheduledEmail's dependencies if any.
+    const { default: OrganizerScheduledEmail } = await import(
+      "./organizer-scheduled-email"
+    );
+    const calEvent = {
+      team: { id: 42, name: "Iberolegal", members: [] },
+      type: "test",
+      title: "t",
+      description: "",
+      startTime: "2026-01-01T00:00:00Z",
+      endTime: "2026-01-01T00:15:00Z",
+      organizer: { email: "o@e.com", name: "O", timeZone: "UTC", language: { locale: "en", translate: ((x: string) => x) as any } },
+      attendees: [{ email: "a@e.com", name: "A", timeZone: "UTC", language: { locale: "en", translate: ((x: string) => x) as any } }],
+      uid: "uid",
+      location: "",
+    } as any;
+    const email = new OrganizerScheduledEmail({ calEvent });
+    expect((email as any).teamId).toBe(42);
+  });
+
+  it("defaults teamId to null when calEvent has no team", async () => {
+    const { default: OrganizerScheduledEmail } = await import(
+      "./organizer-scheduled-email"
+    );
+    const calEvent = {
+      type: "test",
+      title: "t",
+      description: "",
+      startTime: "2026-01-01T00:00:00Z",
+      endTime: "2026-01-01T00:15:00Z",
+      organizer: { email: "o@e.com", name: "O", timeZone: "UTC", language: { locale: "en", translate: ((x: string) => x) as any } },
+      attendees: [{ email: "a@e.com", name: "A", timeZone: "UTC", language: { locale: "en", translate: ((x: string) => x) as any } }],
+      uid: "uid",
+      location: "",
+    } as any;
+    const email = new OrganizerScheduledEmail({ calEvent });
+    expect((email as any).teamId).toBeNull();
+  });
+});

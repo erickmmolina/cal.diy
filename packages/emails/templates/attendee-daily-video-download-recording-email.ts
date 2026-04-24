@@ -21,6 +21,7 @@ export default class AttendeeDailyVideoDownloadRecordingEmail extends BaseEmail 
     this.attendee = attendee;
     this.downloadLink = downloadLink;
     this.t = attendee.language.translate;
+    this.teamId = calEvent.team?.id ?? null;
   }
   protected async getNodeMailerPayload(): Promise<Record<string, unknown>> {
     return {

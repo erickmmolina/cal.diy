@@ -19,6 +19,7 @@ export default class OrganizerDailyVideoDownloadTranscriptEmail extends BaseEmai
     this.calEvent = calEvent;
     this.transcriptDownloadLinks = transcriptDownloadLinks;
     this.t = this.calEvent.organizer.language.translate;
+    this.teamId = calEvent.team?.id ?? null;
   }
   protected async getNodeMailerPayload(): Promise<Record<string, unknown>> {
     const attachments = await Promise.all(
