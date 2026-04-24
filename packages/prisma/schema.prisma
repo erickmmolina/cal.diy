@@ -597,6 +597,8 @@ model Team {
   verifiedNumbers        VerifiedNumber[]
   verifiedEmails         VerifiedEmail[]
   bannerUrl              String?
+  emailFromAddress       String?
+  emailFromName          String?
   parentId               Int?
   parent                 Team?                   @relation("organization", fields: [parentId], references: [id], onDelete: Cascade)
   children               Team[]                  @relation("organization")
