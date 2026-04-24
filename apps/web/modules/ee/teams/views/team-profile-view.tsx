@@ -263,6 +263,8 @@ const TeamProfileForm = ({ team, teamId }: TeamProfileFormProps) => {
       .min(1, t("team_url_required")),
     logo: z.string().nullable(),
     bio: z.string(),
+    emailFromName: z.string().max(100).nullish(),
+    emailFromAddress: z.string().email().max(200).nullish().or(z.literal("")),
   });
 
   type FormValues = z.infer<typeof teamProfileFormSchema>;
@@ -277,6 +279,8 @@ const TeamProfileForm = ({ team, teamId }: TeamProfileFormProps) => {
         name: (res?.name || "") as string,
         bio: (res?.bio || "") as string,
         slug: res?.slug as string,
+        emailFromName: res?.emailFromName ?? "",
+        emailFromAddress: res?.emailFromAddress ?? "",
       });
       await utils.viewer.teams.get.invalidate();
       await utils.viewer.eventTypes.getUserEventGroups.invalidate();
@@ -302,6 +306,8 @@ const TeamProfileForm = ({ team, teamId }: TeamProfileFormProps) => {
     logo: team?.logo || "",
     bio: team?.bio || "",
     slug: team?.slug || ((team?.metadata as Prisma.JsonObject)?.requestedSlug as string) || "",
+    emailFromName: team?.emailFromName ?? "",
+    emailFromAddress: team?.emailFromAddress ?? "",
   };
 
   const form = useForm({
@@ -351,7 +357,12 @@ const TeamProfileForm = ({ team, teamId }: TeamProfileFormProps) => {
           objectKeys(variables).forEach((key) => {
             if (variables[key as keyof typeof variables] === team?.[key]) delete variables[key];
           });
-          mutation.mutate({ id: team.id, ...variables });
+          mutation.mutate({
+            id: team.id,
+            ...variables,
+            emailFromName: values.emailFromName || null,
+            emailFromAddress: values.emailFromAddress || null,
+          });
         }
       }}>
       <div className="border-subtle border-x px-4 py-8 sm:px-6">
@@ -464,6 +475,37 @@ const TeamProfileForm = ({ team, teamId }: TeamProfileFormProps) => {
           />
         </div>
         <p className="text-default mt-2 text-sm">{t("team_description")}</p>
+        <div className="mt-8">
+          <Controller
+            control={form.control}
+            name="emailFromName"
+            render={({ field: { value, onChange, name } }) => (
+              <TextField
+                name={name}
+                label="Email From Name"
+                placeholder="Iberolegal"
+                value={value ?? ""}
+                onChange={(e) => onChange(e?.target.value)}
+              />
+            )}
+          />
+        </div>
+        <div className="mt-8">
+          <Controller
+            control={form.control}
+            name="emailFromAddress"
+            render={({ field: { value, onChange, name } }) => (
+              <TextField
+                name={name}
+                type="email"
+                label="Email From Address"
+                placeholder="noreply@ibero.legal"
+                value={value ?? ""}
+                onChange={(e) => onChange(e?.target.value)}
+              />
+            )}
+          />
+        </div>
       </div>
       <SectionBottomActions align="end">
         <Button

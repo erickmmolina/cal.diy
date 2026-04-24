@@ -360,6 +360,8 @@ export async function getTeamWithoutMembers(args: {
       theme: true,
       brandColor: true,
       darkBrandColor: true,
+      emailFromAddress: true,
+      emailFromName: true,
       inviteTokens: {
         select: {
           token: true,

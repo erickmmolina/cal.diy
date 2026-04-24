@@ -205,6 +205,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     includeManagedEventsInLimits: updatedTeam.includeManagedEventsInLimits,
     rrResetInterval: updatedTeam.rrResetInterval,
     rrTimestampBasis: updatedTeam.rrTimestampBasis,
+    emailFromAddress: updatedTeam.emailFromAddress,
+    emailFromName: updatedTeam.emailFromName,
   };
 };
 
