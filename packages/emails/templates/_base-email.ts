@@ -9,10 +9,12 @@ import { getServerErrorFromUnknown } from "@calcom/lib/server/getServerErrorFrom
 import { setTestEmail } from "@calcom/lib/testEmails";
 import { prisma } from "@calcom/prisma";
 
+import { resolveTeamEmailFrom } from "../lib/resolveTeamEmailFrom";
 import { sanitizeDisplayName } from "../lib/sanitizeDisplayName";
 
 export default class BaseEmail {
   name = "";
+  protected teamId: number | null = null;
 
   protected getTimezone() {
     return "";
@@ -62,7 +64,7 @@ export default class BaseEmail {
     const sanitizedTo = sanitizeDisplayName(to);
 
     const parseSubject = z.string().safeParse(payload?.subject);
-    const payloadWithUnEscapedSubject = {
+    const payloadWithUnEscapedSubject: Record<string, unknown> = {
       headers: this.getMailerOptions().headers,
       ...payload,
       ...{
@@ -71,6 +73,16 @@ export default class BaseEmail {
       },
       ...(parseSubject.success && { subject: decodeHTML(parseSubject.data) }),
     };
+
+    if (this.teamId != null) {
+      const override = await resolveTeamEmailFrom(this.teamId);
+      if (override) {
+        payloadWithUnEscapedSubject.from = sanitizeDisplayName(
+          `${override.name} <${override.address}>`
+        );
+      }
+    }
+
     const { createTransport } = await import("nodemailer");
     await new Promise((resolve, reject) =>
       createTransport(this.getMailerOptions().transport).sendMail(
