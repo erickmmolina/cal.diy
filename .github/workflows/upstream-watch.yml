@@ -1,0 +1,76 @@
+name: Upstream Cal.diy release watcher
+
+on:
+  schedule:
+    # Every day at 09:00 UTC (06:00 Chile, 11:00 Madrid)
+    - cron: '0 9 * * *'
+  workflow_dispatch: {} # allow manual run
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+
+      - name: Detect latest upstream release
+        id: detect
+        run: |
+          set -euo pipefail
+          # Get the latest semver-like tag from upstream that isn't a pre-release.
+          LATEST=$(gh release view --repo calcom/cal.diy --json tagName -q .tagName)
+          echo "Upstream latest tag: $LATEST"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+          # Find the most recent ibero/v* branch tracked locally.
+          IBERO_LATEST=$(git ls-remote --heads origin 'ibero/v*' \
+            | awk '{print $2}' \
+            | sed 's|refs/heads/ibero/||' \
+            | sort -V \
+            | tail -n1)
+          echo "Latest ibero branch base: $IBERO_LATEST"
+          echo "ibero=$IBERO_LATEST" >> "$GITHUB_OUTPUT"
+
+          if [ "$LATEST" = "$IBERO_LATEST" ]; then
+            echo "in_sync=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "in_sync=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open or skip issue
+        if: steps.detect.outputs.in_sync == 'false'
+        run: |
+          set -euo pipefail
+          TITLE="chore(upstream): new Cal.com release ${{ steps.detect.outputs.latest }} available"
+          # Skip if an open issue with the same title already exists.
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITLE" --json number -q '.[0].number' || true)
+          if [ -n "$EXISTING" ]; then
+            echo "Issue #$EXISTING already open. Skipping."
+            exit 0
+          fi
+          BODY=$(cat <<'EOF'
+          Upstream `calcom/cal.diy` shipped a new release that we don't have yet.
+
+          - **Upstream latest:** ${{ steps.detect.outputs.latest }}
+          - **Our latest ibero branch:** ${{ steps.detect.outputs.ibero }}
+
+          Next steps: read [`UPGRADE.md`](../blob/ibero/${{ steps.detect.outputs.ibero }}/UPGRADE.md) and decide whether to take this version. The runbook covers rebase, CI build, and Elestio deploy.
+
+          [Upstream release notes](https://github.com/calcom/cal.diy/releases/tag/${{ steps.detect.outputs.latest }})
+          EOF
+          )
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY" --label "upgrade" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Report sync state
+        run: |
+          echo "Upstream: ${{ steps.detect.outputs.latest }}"
+          echo "Ibero:    ${{ steps.detect.outputs.ibero }}"
+          echo "In sync:  ${{ steps.detect.outputs.in_sync }}"
