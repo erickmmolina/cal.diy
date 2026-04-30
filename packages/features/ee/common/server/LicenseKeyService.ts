@@ -130,7 +130,8 @@ export class NoopLicenseKeyService implements ILicenseKeyService {
   }
 
   async checkLicense(): Promise<boolean> {
-    return Promise.resolve(process.env.NEXT_PUBLIC_IS_E2E === "1");
+    // ibero patch: self-hosted instance treats unlicensed runtime as fully licensed.
+    return Promise.resolve(true);
   }
 }
 
