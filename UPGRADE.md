@@ -1,6 +1,6 @@
 # Upgrade runbook — `ibero/v6.2.0` → newer Cal.com release
 
-This branch carries 7 patch commits on top of upstream `v6.2.0`. When a newer Cal.com release ships and you want to take it, follow this runbook.
+This branch carries 8 functional patch commits on top of upstream `v6.2.0` (7 of email From + 1 of license bypass) plus 3 meta commits (CI + docs). When a newer Cal.com release ships and you want to take it, follow this runbook.
 
 ## How you'll know there's a new release
 
@@ -18,7 +18,9 @@ Not every release is worth taking. Read the upstream changelog and decide based 
 - **Major version bump** (e.g. v6 → v7) → spike first, may break the patch and require schema migration plan.
 - **Minor cosmetic / unrelated features** → skip if your patch ages well.
 
-The patch in this branch touches:
+The patches in this branch touch:
+
+**Email From override** (7 commits):
 
 - `packages/prisma/schema.prisma` (Team model)
 - `packages/prisma/migrations/<timestamp>_team_email_from/`
@@ -30,7 +32,11 @@ The patch in this branch touches:
 - `apps/web/modules/ee/teams/views/team-profile-view.tsx`
 - `packages/features/ee/teams/lib/queries.ts`
 
-Conflicts on a rebase will most likely happen in `_base-email.ts`, `team-profile-view.tsx`, and `update.handler.ts` if upstream restructures those files.
+**License bypass** (1 commit):
+
+- `packages/features/ee/common/server/LicenseKeyService.ts` — `NoopLicenseKeyService.checkLicense()` returns `true` unconditionally.
+
+Conflicts on a rebase will most likely happen in `_base-email.ts`, `team-profile-view.tsx`, `update.handler.ts`, and `LicenseKeyService.ts` if upstream restructures those files. The license patch is the most fragile one because Cal.com may change the licensing architecture between major versions.
 
 ## Rebase procedure
 
@@ -46,7 +52,7 @@ git log --oneline upstream/main -- packages/emails/templates/_base-email.ts | he
 # 3. Create a rebase branch from the new tag.
 git checkout -b ibero/<NEW_TAG> <NEW_TAG>
 
-# 4. Cherry-pick our 7 feature commits in order (skip the doc commits if you don't want them on the new branch — they live on the old branch already).
+# 4. Cherry-pick our 8 feature commits in order (skip the doc commits if you don't want them on the new branch — they live on the old branch already).
 #    Replace the SHAs with the actual ones from `git log ibero/v6.2.0`. Order matters.
 git cherry-pick \
   ca701186d0 \  # feat(prisma): add emailFromAddress and emailFromName to Team
@@ -55,7 +61,8 @@ git cherry-pick \
   22ba980d23 \  # feat(emails): propagate teamId from calEvent to BaseEmail
   0bb99201ca \  # feat(trpc): validate and persist emailFromAddress/Name on Team update
   c0507b2893 \  # feat(settings): expose Team emailFrom fields in admin UI
-  fa59ffe97f    # ci: build and publish ibero Docker image to GHCR
+  fa59ffe97f \  # ci: build and publish ibero Docker image to GHCR
+  1c4a57779d    # feat(license): treat unlicensed self-hosted runtime as licensed
 
 # 5. Resolve conflicts as they come up. Common scenarios:
 #    - schema.prisma: keep our two new fields after `bannerUrl`. If upstream renamed/moved Team, place them in the equivalent location.

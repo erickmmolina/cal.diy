@@ -1,20 +1,41 @@
-# Rollback plan — ibero/v6.2.0 patch (per-team email From override)
+# Rollback plan — ibero/v6.2.0 patches
 
-If the per-team email From override deployed in this branch causes any issue in production:
+This branch carries two patch sets on top of upstream `v6.2.0`:
+
+1. **Per-team email From override** (commits `ca70118` → `c0507b2`).
+2. **EE license bypass** (commit `1c4a577`, 2026-04-29) — `NoopLicenseKeyService.checkLicense()` returns `true` to unlock Teams Members, SSO, Insights, Workflows, Routing Forms, and Organizations gates without a license key.
+
+Tag activo en producción a 2026-04-29: `ibero-v6.2.0-1c4a577`.
+
+If any patch causes issues in production, follow the rollback flow below.
 
 ## Quick rollback (Docker image only)
 
 1. In Elestio dashboard → service `ibero-cal` → "Update config" → Docker Compose tab.
 2. Change the `image:` of the `calcom` service from:
    ```
-   image: ghcr.io/erickmmolina/cal.diy:ibero-v6.2.0-fa59ffe
+   image: ghcr.io/erickmmolina/cal.diy:ibero-v6.2.0-1c4a577
    ```
-   back to:
+   back to either:
+   ```
+   image: ghcr.io/erickmmolina/cal.diy:ibero-v6.2.0-fa59ffe   # email From only, no license bypass
+   ```
+   or fully back to upstream:
    ```
    image: calcom/cal.com:${SOFTWARE_VERSION_TAG}
    ```
 3. "Update & Restart". ETA 2-3 min.
 4. The two new columns `Team.emailFromAddress` and `Team.emailFromName` remain in DB. The upstream image ignores them. **No data corruption.**
+
+## Rolling back ONLY the license bypass
+
+If the email From override is fine but you want EE features re-locked (e.g. you bought a real license and want upstream behaviour):
+
+1. Cambia el tag en Elestio a `ibero-v6.2.0-fa59ffe` (still has email From, no license bypass).
+2. Setea `CALCOM_LICENSE_KEY` con la key real en las ENV del servicio.
+3. Restart. La instancia validará contra `CALCOM_PRIVATE_API_ROUTE` igual que upstream.
+
+Datos en la DB no se ven afectados — el patch de licencia solo cambia un return value en código.
 
 ## Full rollback (also drop the Prisma columns)
 
